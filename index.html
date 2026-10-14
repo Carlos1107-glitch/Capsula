@@ -77,11 +77,29 @@ h1{letter-spacing:.32em}
 .c-big{animation:beat 1.8s ease-in-out infinite}
 @keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.13)}}
 #enter{font-size:21px}
+
+/* ===== Fotos y álbum ===== */
+.ph{margin-top:6px}
+.ph img{width:100%;border-radius:12px;display:block;margin-bottom:12px}
+.phrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.phbtn{background:none;border:1px solid var(--line);color:var(--ink);font:inherit;font-size:15px;border-radius:12px;padding:9px 14px;cursor:pointer}
+#album{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px calc(env(safe-area-inset-bottom,0px) + 40px)}
+#album[hidden]{display:none}
+.ahead{max-width:460px;margin:0 auto 18px;display:flex;align-items:center;justify-content:space-between}
+.ahead h2{margin:0;font-family:'Great Vibes',cursive;font-size:40px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink)}
+#aclose{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;cursor:pointer}
+.acard{max-width:460px;margin:0 auto 18px;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 20px 40px -28px var(--acc)}
+.acard img{width:100%;display:block}
+.acard div{padding:16px 18px}
+.acard small{color:var(--mute);letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+.acard p{font-style:italic;font-size:21px;margin:6px 0 0;line-height:1.45}
+.aempty{max-width:460px;margin:40px auto;text-align:center;color:var(--mute)}
 </style>
 </head>
 <body>
 <div class="hearts" id="hearts"></div>
 <div id="cover"><div class="hearts" id="chearts"></div><div class="cin"><p class="c-sub">Una cápsula hecha para ti</p><p class="c-title" id="c-title"></p><div class="c-big">💜</div><button id="enter">Entrar</button></div></div>
+<div id="album" hidden><div class="ahead"><h2>Mi álbum</h2><button id="aclose" aria-label="Cerrar">✕</button></div><div id="alist"></div></div>
 <button id="music" hidden aria-label="Música">🎵</button>
 <main>
   <h1>Cápsula diaria</h1>
@@ -91,6 +109,7 @@ h1{letter-spacing:.32em}
   <div id="out"></div>
   <div class="nav"><button id="prev" aria-label="Mes anterior">‹</button><h2 id="mh"></h2><button id="next" aria-label="Mes siguiente">›</button></div>
   <div class="grid" id="grid"></div>
+  <button class="notif" id="album-btn">📖 Mi álbum de recuerdos</button>
   <button class="notif" id="notif-btn" hidden>🔔 Activar recordatorio diario</button>
   <p class="foot" id="foot"></p>
 </main>
@@ -132,8 +151,9 @@ function fmtCount(ms) {
 function showMessage(i) {
   clearInterval(timer);
   opened[i] = true; save();
-  $("out").innerHTML = '<div class="msg"><small>Día ' + (i + 1) + '</small><p></p></div>';
+  $("out").innerHTML = '<div class="msg"><small>Día ' + (i + 1) + '</small><p></p><div class="ph" id="ph"></div></div>';
   $("out").querySelector("p").textContent = MESSAGES[i];
+  drawPhoto(i);
   render();
 }
 function showLocked(i) {
@@ -242,6 +262,87 @@ $("enter").onclick = () => {
   setTimeout(() => { $("cover").style.display = "none"; }, 700);
 };
 $("music").onclick = () => setMusic(!playing);
+
+// ====== FOTOS Y ÁLBUM (se guardan solo en el celular de quien usa la app) ======
+let db = null;
+const dbReady = new Promise(res => {
+  try {
+    const r = indexedDB.open("capsula-fotos", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("fotos", { keyPath: "day" });
+    r.onsuccess = () => { db = r.result; res(db); };
+    r.onerror = () => res(null);
+  } catch (e) { res(null); }
+});
+const fotos = {};
+async function loadFotos() {
+  const d = await dbReady; if (!d) return;
+  await new Promise(res => {
+    try {
+      const q = d.transaction("fotos").objectStore("fotos").getAll();
+      q.onsuccess = () => { q.result.forEach(f => { fotos[f.day] = f.data; }); res(); };
+      q.onerror = () => res();
+    } catch (e) { res(); }
+  });
+}
+function savePhoto(day, data) { fotos[day] = data; if (db) try { db.transaction("fotos", "readwrite").objectStore("fotos").put({ day, data }); } catch (e) {} }
+function delPhoto(day) { delete fotos[day]; if (db) try { db.transaction("fotos", "readwrite").objectStore("fotos").delete(day); } catch (e) {} }
+function resize(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, 1000 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = rej; img.src = url;
+  });
+}
+function pick(i) {
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    try { savePhoto(i, await resize(f)); } catch (e) { alert("No pude cargar esa foto, prueba con otra."); }
+    drawPhoto(i);
+  };
+  inp.click();
+}
+function drawPhoto(i) {
+  const box = $("ph"); if (!box) return;
+  box.innerHTML = "";
+  if (fotos[i]) { const im = document.createElement("img"); im.src = fotos[i]; im.alt = "Tu foto del día " + (i + 1); box.appendChild(im); }
+  const row = document.createElement("div"); row.className = "phrow";
+  const add = document.createElement("button"); add.className = "phbtn";
+  add.textContent = fotos[i] ? "Cambiar foto" : "📷 Agregar una foto de este día";
+  add.onclick = () => pick(i); row.appendChild(add);
+  if (fotos[i]) {
+    const del = document.createElement("button"); del.className = "phbtn"; del.textContent = "Quitar";
+    del.onclick = () => { delPhoto(i); drawPhoto(i); }; row.appendChild(del);
+  }
+  box.appendChild(row);
+}
+function openAlbum() {
+  const list = $("alist"); list.innerHTML = "";
+  const top = Math.min(dayIndex(), N - 1); let n = 0;
+  for (let i = top; i >= 0; i--) {
+    if (!opened[i] && !fotos[i]) continue;
+    n++;
+    const card = document.createElement("div"); card.className = "acard";
+    if (fotos[i]) { const im = document.createElement("img"); im.src = fotos[i]; im.alt = "Foto del día " + (i + 1); card.appendChild(im); }
+    const body = document.createElement("div");
+    const sm = document.createElement("small");
+    sm.textContent = "Día " + (i + 1) + " · " + unlockAt(i).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+    const p = document.createElement("p"); p.textContent = MESSAGES[i];
+    body.appendChild(sm); body.appendChild(p); card.appendChild(body); list.appendChild(card);
+  }
+  if (!n) { const e = document.createElement("p"); e.className = "aempty"; e.textContent = "Aún no hay recuerdos. Abre el mensaje de hoy y agrega una foto."; list.appendChild(e); }
+  $("album").hidden = false; $("album").scrollTop = 0;
+}
+$("album-btn").onclick = openAlbum;
+$("aclose").onclick = () => { $("album").hidden = true; };
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+loadFotos();
 </script>
 </body>
 </html>
