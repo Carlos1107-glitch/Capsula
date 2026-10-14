@@ -83,22 +83,27 @@ h1{letter-spacing:.32em}
 .ph img{width:100%;border-radius:12px;display:block;margin-bottom:12px}
 .phrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .phbtn{background:none;border:1px solid var(--line);color:var(--ink);font:inherit;font-size:15px;border-radius:12px;padding:9px 14px;cursor:pointer}
-#album{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px calc(env(safe-area-inset-bottom,0px) + 40px)}
-#album[hidden]{display:none}
+#album,#cartas{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px calc(env(safe-area-inset-bottom,0px) + 40px)}
+#album[hidden],#cartas[hidden]{display:none}
 .ahead{max-width:460px;margin:0 auto 18px;display:flex;align-items:center;justify-content:space-between}
 .ahead h2{margin:0;font-family:'Great Vibes',cursive;font-size:40px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink)}
-#aclose{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;cursor:pointer}
+#aclose,#cclose{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;cursor:pointer}
 .acard{max-width:460px;margin:0 auto 18px;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 20px 40px -28px var(--acc)}
 .acard img{width:100%;display:block}
 .acard div{padding:16px 18px}
 .acard small{color:var(--mute);letter-spacing:.12em;text-transform:uppercase;font-size:11px}
 .acard p{font-style:italic;font-size:21px;margin:6px 0 0;line-height:1.45}
 .aempty{max-width:460px;margin:40px auto;text-align:center;color:var(--mute)}
+.song{display:inline-block;color:var(--acc);text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-size:16px;margin:2px 0 8px}
+.acard .song{margin-top:10px}
+.cbtn{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);font:inherit;font-size:21px;padding:18px;cursor:pointer}
+#clist .acard div{animation:rise .5s ease both}
 </style>
 </head>
 <body>
 <div class="hearts" id="hearts"></div>
 <div id="cover"><div class="hearts" id="chearts"></div><div class="cin"><p class="c-sub">Una cápsula hecha para ti</p><p class="c-title" id="c-title"></p><div class="c-big">💜</div><button id="enter">Entrar</button></div></div>
+<div id="cartas" hidden><div class="ahead"><h2>Ábrela cuando…</h2><button id="cclose" aria-label="Cerrar">✕</button></div><div id="clist"></div></div>
 <div id="album" hidden><div class="ahead"><h2>Mi álbum</h2><button id="aclose" aria-label="Cerrar">✕</button></div><div id="alist"></div></div>
 <button id="music" hidden aria-label="Música">🎵</button>
 <main>
@@ -109,6 +114,7 @@ h1{letter-spacing:.32em}
   <div id="out"></div>
   <div class="nav"><button id="prev" aria-label="Mes anterior">‹</button><h2 id="mh"></h2><button id="next" aria-label="Mes siguiente">›</button></div>
   <div class="grid" id="grid"></div>
+  <button class="notif" id="cartas-btn">💌 Ábrela cuando…</button>
   <button class="notif" id="album-btn">📖 Mi álbum de recuerdos</button>
   <button class="notif" id="notif-btn" hidden>🔔 Activar recordatorio diario</button>
   <p class="foot" id="foot"></p>
@@ -120,6 +126,375 @@ const START = "2026-10-14";
 // Dedicatoria: pon el nombre de la persona en PARA (ej. "Ana") y el tuyo en DE.
 const PARA = "Valentina";
 const DE = "Carlos";
+// Canción del día: pon el número de día y "Título - Artista" (abre una búsqueda en YouTube).
+// Si quieres un enlace exacto, usa: 14: { t: "Título - Artista", url: "https://..." },
+const CANCION_DIA = {
+  1: "Julieta - Latin Mafia",
+  2: "Acompáñame a Estar Solo - Ricardo Arjona",
+  3: "Quién - Pablo Alborán",
+  4: "Adore You - Harry Styles",
+  5: "Zapatillas - El Canto del Loco",
+  6: "Peligro - Reik",
+  7: "Deja Que Te Bese - La Oreja de Van Gogh",
+  8: "Nadie Más! - NSQK",
+  9: "Marry Me - Train",
+  10: "La Llave de Mi Corazón - Juan Luis Guerra",
+  11: "Qué Bonito Es Querer - Manuel Carrasco",
+  12: "De Los Besos Que Te Di - Christian Nodal",
+  13: "El Perdón - Nicky Jam y Enrique Iglesias",
+  14: "Culpable o No - Luis Miguel",
+  15: "Cuando Nadie Me Ve - Alejandro Sanz",
+  16: "Ojitos Lindos - Bad Bunny y Bomba Estéreo",
+  17: "Estoy Hecho de Pedacitos de Ti - Antonio Orozco",
+  18: "Torero - Chayanne",
+  19: "Nada Valgo Sin Tu Amor - Juanes",
+  20: "Reggaetón Lento - CNCO",
+  21: "Hasta el Amanecer - Nicky Jam",
+  22: "Sin Ti No Soy Nada - Amaral",
+  23: "Pastillas de Freno - Estopa",
+  24: "Amárrame - Mon Laferte y Juanes",
+  25: "Te Hice Mal - Los Temerarios",
+  26: "Piensa en Mí - Luz Casal",
+  27: "11 y 6 - Fito Páez",
+  28: "Una Lady Como Tú - Manuel Turizo",
+  29: "Recuérdame - Pablo Alborán",
+  30: "Algo de Mí - Camilo Sesto",
+  31: "Photograph - Ed Sheeran",
+  32: "Tu Jardín con Enanitos - Melendi",
+  33: "Por Fin Te Encontré - Cali y El Dandee",
+  34: "Creo Que Me Enamoré - Natalia Jiménez",
+  35: "Crimen - Gustavo Cerati",
+  36: "Hasta Que Te Conocí - Juan Gabriel",
+  37: "Tu Recuerdo - Ricky Martin",
+  38: "Dreaming of You - Selena",
+  39: "Sólo Importas Tú - Franco De Vita",
+  40: "Hecho Para Ti - Latin Mafia y Omar Apollo",
+  41: "Cuando Nos Volvamos a Encontrar - Carlos Vives",
+  42: "Estoy Aquí - Shakira",
+  43: "Puente - Gustavo Cerati",
+  44: "Entrega de Amor - Los Ángeles Azules",
+  45: "Adoro - Armando Manzanero",
+  46: "Love of My Life - Queen",
+  47: "Te Conozco - Ricardo Arjona",
+  48: "Oye Mi Amor - Maná",
+  49: "Tan Enamorados - Ricardo Montaner",
+  50: "Labios Compartidos - Maná",
+  51: "Bésame Mucho - Consuelo Velázquez",
+  52: "Déjame - Los Secretos",
+  53: "Cuéntame al Oído - La Oreja de Van Gogh",
+  54: "Fly Me to the Moon - Frank Sinatra",
+  55: "La Incondicional - Luis Miguel",
+  56: "Las Cosas Pequeñas - Prince Royce",
+  57: "Lucky - Jason Mraz y Colbie Caillat",
+  58: "Como Te Recuerdo - Los Temerarios",
+  59: "La Gata Bajo la Lluvia - Rocío Dúrcal",
+  60: "Por Primera Vez - Camilo",
+  61: "Cuando Pase el Temblor - Soda Stereo",
+  62: "If I Ain't Got You - Alicia Keys",
+  63: "A Que No Me Dejas - Alejandro Sanz",
+  64: "Cuando Volverás - Aventura",
+  65: "Un Vestido y un Amor - Fito Páez",
+  66: "Let's Get It On - Marvin Gaye",
+  67: "Melina - Camilo Sesto",
+  68: "Simplemente Amigos - Ana Gabriel",
+  69: "Mi Razón de Ser - Banda MS",
+  70: "Bachata Rosa - Juan Luis Guerra",
+  71: "Algo Tienes - Paulina Rubio",
+  72: "Experiencia Religiosa - Enrique Iglesias",
+  73: "Si Una Vez - Selena",
+  74: "No Tengo Dinero - Juan Gabriel",
+  75: "Mi Eterno Amor Secreto - Marco Antonio Solís",
+  76: "Lloviendo Estrellas - Cristian Castro",
+  77: "The Power of Love - Celine Dion",
+  78: "Tan Fácil - CNCO",
+  79: "Eres Mi Sueño - Fonseca",
+  80: "Me Olvidé de Vivir - Julio Iglesias",
+  81: "Algo Me Gusta de Ti - Wisin y Yandel",
+  82: "Rosa Pastel - Belanova",
+  83: "Blanco y Negro - Malú",
+  84: "Me Haces Bien - Jorge Drexler",
+  85: "Lovelanguage - NSQK",
+  86: "Pa' Mayté - Carlos Vives",
+  87: "Tabú - Pablo Alborán",
+  88: "Vuelve - Ricky Martin",
+  89: "Perdóname - Pablo Alborán",
+  90: "Vida de Rico - Camilo",
+  91: "Trátame Suavemente - Soda Stereo",
+  92: "Evidencias - Ana Gabriel",
+  93: "Gavilán o Paloma - José José",
+  94: "Yo También - Romeo Santos y Marc Anthony",
+  95: "Suerte - Shakira",
+  96: "La Nave del Olvido - José José",
+  97: "Mis Sentimientos - Los Ángeles Azules",
+  98: "Por Amarte Así - Cristian Castro",
+  99: "Y Ahora Te Vas - Los Bukis",
+  100: "Mil Horas - Los Abuelos de la Nada",
+  101: "Te Lo Pido por Favor - Juan Gabriel",
+  102: "Siempre en Mi Mente - Juan Gabriel",
+  103: "Detalles - Roberto Carlos",
+  104: "Morenamía - Miguel Bosé",
+  105: "Ángel de Amor - Maná",
+  106: "Crazy Little Thing Called Love - Queen",
+  107: "Para No Olvidar - Los Rodríguez",
+  108: "Lo Que Construimos - Natalia Lafourcade",
+  109: "Here, There and Everywhere - The Beatles",
+  110: "Lago en el Cielo - Gustavo Cerati",
+  111: "Te Mando Flores - Fonseca",
+  112: "Querida - Juan Gabriel",
+  113: "Por Debajo de la Mesa - Luis Miguel",
+  114: "40 y 20 - José José",
+  115: "El Amor de Su Vida - Julión Álvarez",
+  116: "Todo Cambió - Camila",
+  117: "Si Estuviésemos Juntos - Bad Bunny",
+  118: "Azul - Cristian Castro",
+  119: "Corazón Sin Cara - Prince Royce",
+  120: "Guitarras Blancas - Enanitos Verdes",
+  121: "Volví a Nacer - Carlos Vives",
+  122: "Dígale - David Bisbal",
+  123: "Mientes - Camila",
+  124: "Tú Sí Sabes Quererme - Natalia Lafourcade",
+  125: "Amiga Mía - Alejandro Sanz",
+  126: "Sin Medir Distancias - Banda MS",
+  127: "Es Por Ti - Juanes",
+  128: "Say You Won't Let Go - James Arthur",
+  129: "Quiero Repetir - Ozuna",
+  130: "neo roneo - Rusowsky y Latin Mafia",
+  131: "No Me Destruyas - Zoé",
+  132: "Dejala que Vuelva - Piso 21 y Manuel Turizo",
+  133: "Me Enseñaste - Ricardo Arjona",
+  134: "Kilómetros - Sin Bandera",
+  135: "Sofia - Álvaro Soler",
+  136: "A Dios le Pido - Juanes",
+  137: "Tu Cárcel - Los Bukis",
+  138: "Everything - Michael Bublé",
+  139: "Amanecí en Tus Brazos - Luis Miguel",
+  140: "Sweet Child o' Mine - Guns N' Roses",
+  141: "Tu Amor Me Hace Bien - Marc Anthony",
+  142: "Hey - Julio Iglesias",
+  143: "Somos Novios - Armando Manzanero",
+  144: "Fotos y Recuerdos - Selena",
+  145: "Puedes Contar Conmigo - La Oreja de Van Gogh",
+  146: "Coleccionista de Canciones - Camila",
+  147: "Robarte un Beso - Carlos Vives y Sebastián Yatra",
+  148: "Have I Told You Lately - Rod Stewart",
+  149: "Devuélveme a Mi Chica - Hombres G",
+  150: "Propuesta Indecente - Romeo Santos",
+  151: "Antología - Shakira",
+  152: "Besos - El Canto del Loco",
+  153: "A Pedir Su Mano - Juan Luis Guerra",
+  154: "She's Always a Woman - Billy Joel",
+  155: "Como Camarón - Estopa",
+  156: "Creo en Ti - Reik",
+  157: "Escapar - Enrique Iglesias",
+  158: "Mi Buen Amor - Mon Laferte",
+  159: "Almohada - José José",
+  160: "Ahora Te Puedes Marchar - Luis Miguel",
+  161: "Ain't No Sunshine - Bill Withers",
+  162: "I Will Always Love You - Whitney Houston",
+  163: "Favorito - Camilo",
+  164: "Perdido Sin Ti - Ricky Martin",
+  165: "Salomé - Chayanne",
+  166: "Labios Rotos - Zoé",
+  167: "Recuérdame - Carlos Rivera",
+  168: "Vino Tinto - Estopa",
+  169: "Ay Amor - Ana Gabriel",
+  170: "Entra en Mi Vida - Sin Bandera",
+  171: "Tu Foto - Ozuna",
+  172: "Suave - Luis Miguel",
+  173: "Can You Feel the Love Tonight - Elton John",
+  174: "Yo Vengo a Ofrecer Mi Corazón - Fito Páez",
+  175: "OTROS LUGARES - NSQK y DrefQuila",
+  176: "Vivir Así Es Morir de Amor - Camilo Sesto",
+  177: "Soñé - Zoé",
+  178: "El Amante - Nicky Jam",
+  179: "Tutu - Camilo y Pedro Capó",
+  180: "Y Solo Se Me Ocurre Amarte - Alejandro Sanz",
+  181: "Te Conozco Bien - Marc Anthony",
+  182: "Mi Persona Favorita - Alejandro Sanz y Camila Cabello",
+  183: "Crazy Love - Van Morrison",
+  184: "Amada Amante - Roberto Carlos",
+  185: "Si No Te Tengo a Ti - Hombres G",
+  186: "Viento - Caifanes",
+  187: "Índigo - Camilo y Evaluna Montaner",
+  188: "Me Muero - La Quinta Estación",
+  189: "Sobre un Vidrio Mojado - Los Secretos",
+  190: "Incondicional - Prince Royce",
+  191: "Thinking Out Loud - Ed Sheeran",
+  192: "Por un Segundo - Aventura",
+  193: "Love Me Tender - Elvis Presley",
+  194: "Nosotros - Luis Miguel",
+  195: "Mío - Paulina Rubio",
+  196: "Aprendiz - Malú",
+  197: "Una Foto en Blanco y Negro - El Canto del Loco",
+  198: "Dile al Sol - La Oreja de Van Gogh",
+  199: "Te Lloré un Río - Maná",
+  200: "Cuando Te Besé - Becky G y Paulo Londra",
+  201: "Estrella Polar - Pereza",
+  202: "Primavera 0 - Soda Stereo",
+  203: "Barbie de Extrarradio - Melendi",
+  204: "Quién Me Iba a Decir - David Bisbal",
+  205: "Me Pregunto - Belanova",
+  206: "Espacio Sideral - Jesse y Joy",
+  207: "Flor Pálida - Marc Anthony",
+  208: "Persiana Americana - Soda Stereo",
+  209: "Sin Documentos - Los Rodríguez",
+  210: "Te Necesito - Luis Miguel",
+  211: "Me Enamoré - Shakira",
+  212: "You're My Best Friend - Queen",
+  213: "Mi Nuevo Vicio - Morat y Paulina Rubio",
+  214: "Dile Que Tú Me Quieres - Ozuna",
+  215: "Te Quise Tanto - Paulina Rubio",
+  216: "Te Amaré - Miguel Bosé",
+  217: "La Cintura - Álvaro Soler",
+  218: "Solamente una Vez - Agustín Lara",
+  219: "Cosas Imposibles - Gustavo Cerati",
+  220: "Piel Morena - Thalía",
+  221: "Rayando el Sol - Maná",
+  222: "Para Que No Digas Que No Pienso en Ti - Caifanes",
+  223: "Bailamos - Enrique Iglesias",
+  224: "Ave María - David Bisbal",
+  225: "Me Estoy Cayendo - Latin Mafia",
+  226: "Amores Lejanos - Enanitos Verdes",
+  227: "Tu Falta de Querer - Mon Laferte",
+  228: "Darte un Beso - Prince Royce",
+  229: "Versace on the Floor - Bruno Mars",
+  230: "Costumbres - Rocío Dúrcal",
+  231: "Nunca Es Suficiente - Los Ángeles Azules y Natalia Lafourcade",
+  232: "Corazón Espinado - Santana y Maná",
+  233: "Con la Luna Llena - Melendi",
+  234: "Bidi Bidi Bom Bom - Selena",
+  235: "Hechicera - Maná",
+  236: "Corazón - Maluma",
+  237: "When a Man Loves a Woman - Percy Sledge",
+  238: "Cuídate - La Oreja de Van Gogh",
+  239: "Burbujas de Amor - Juan Luis Guerra",
+  240: "Héroe - Enrique Iglesias",
+  241: "Amarte Es un Placer - Luis Miguel",
+  242: "Luna - Zoé",
+  243: "Me Dejé Llevar - Christian Nodal",
+  244: "Stand by Me - Prince Royce",
+  245: "Atado a Tu Amor - Chayanne",
+  246: "Para Tu Amor - Juanes",
+  247: "Cuando Calienta el Sol - Luis Miguel",
+  248: "Machu Picchu - Camilo",
+  249: "Tu Pirata Soy Yo - Chayanne",
+  250: "Más Que Tu Amigo - Marco Antonio Solís",
+  251: "Amor Prohibido - Selena",
+  252: "Si Me Recuerdas - Los Bukis",
+  253: "Ex de Verdad - Ha*Ash",
+  254: "Yo Contigo, Tú Conmigo - Morat",
+  255: "Cómo Te Voy a Olvidar - Los Ángeles Azules",
+  256: "Té para Tres - Soda Stereo",
+  257: "That's Amore - Dean Martin",
+  258: "Te Llevo para Que Me Lleves - Gustavo Cerati",
+  259: "Saturno - Pablo Alborán",
+  260: "Dejaría Todo - Chayanne",
+  261: "Flaca - Andrés Calamaro",
+  262: "Luz de Día - Enanitos Verdes",
+  263: "Sirena - Sin Bandera",
+  264: "Te Extraño, Te Olvido, Te Amo - Ricky Martin",
+  265: "Lo Noto - Hombres G",
+  266: "Nunca Voy a Olvidarte - Cristian Castro",
+  267: "Yo Que No Vivo Sin Ti - Ricardo Montaner",
+  268: "Make You Feel My Love - Adele",
+  269: "Still Loving You - Scorpions",
+  270: "UGH - NSQK",
+  271: "Yo Quisiera - Reik",
+  272: "No Dejes Que - Caifanes",
+  273: "Quisiera Ser - Alejandro Sanz",
+  274: "Rosas - La Oreja de Van Gogh",
+  275: "Ecos de Amor - Jesse y Joy",
+  276: "Algo Más - La Quinta Estación",
+  277: "Ella y Yo - Aventura y Don Omar",
+  278: "Dímelo - Enrique Iglesias",
+  279: "Te Necesito - Amaral",
+  280: "Nubes - Caifanes",
+  281: "Ojos Así - Shakira",
+  282: "La Playa - La Oreja de Van Gogh",
+  283: "Amigos con Derechos - Reik",
+  284: "Truly - Lionel Richie",
+  285: "Amor Amarillo - Gustavo Cerati",
+  286: "El Listón de Tu Pelo - Los Ángeles Azules",
+  287: "Because You Loved Me - Celine Dion",
+  288: "Entre el Mar y una Estrella - Thalía",
+  289: "Un Beso - Aventura",
+  290: "All I Want Is You - U2",
+  291: "Perdón, Perdón - Ha*Ash",
+  292: "Se Me Olvidó Otra Vez - Juan Gabriel",
+  293: "Dulcemente - Belanova",
+  294: "Hello - Lionel Richie",
+  295: "Obsesión - Aventura",
+  296: "Si Tú Me Miras - Alejandro Sanz",
+  297: "Estés Donde Estés - Ha*Ash",
+  298: "Prometo - Pablo Alborán",
+  299: "Devuélveme la Vida - Antonio Orozco",
+  300: "Esta Tarde Vi Llover - Armando Manzanero",
+  301: "Felices los 4 - Maluma",
+  302: "De Niña a Mujer - Julio Iglesias",
+  303: "Vivir Sin Aire - Maná",
+  304: "I'll Be There for You - Bon Jovi",
+  305: "Fría Como el Viento - Luis Miguel",
+  306: "Dónde Estará Mi Primavera - Marco Antonio Solís",
+  307: "Cuando Me Enamoro - Enrique Iglesias y Juan Luis Guerra",
+  308: "Mi Corazoncito - Aventura",
+  309: "Ropa Cara - Camilo",
+  310: "Cancioncitas de Amor - Romeo Santos",
+  311: "Contigo Aprendí - Armando Manzanero",
+  312: "Silencio - David Bisbal",
+  313: "Valió la Pena - Marc Anthony",
+  314: "Telefonía - Jorge Drexler",
+  315: "Inevitable - Shakira",
+  316: "Me Equivocaría Otra Vez - Fito y Fitipaldis",
+  317: "My Girl - The Temptations",
+  318: "Pero a Tu Lado - Los Secretos",
+  319: "Dile al Amor - Aventura",
+  320: "Solamente Tú - Pablo Alborán",
+  321: "Amar y Querer - José José",
+  322: "Hasta Que Me Olvides - Luis Miguel",
+  323: "Sabor a Mí - Los Panchos",
+  324: "Y Si Fuera Ella - Manuel Carrasco",
+  325: "Eres - Café Tacvba",
+  326: "Corazón Atómico - Zoé",
+  327: "Amor Eterno - Rocío Dúrcal",
+  328: "Ciega Sordomuda - Shakira",
+  329: "Eres Mi Religión - Maná",
+  330: "Abrázame - Camila",
+  331: "Fuiste Tú - Ricardo Arjona y Gaby Moreno",
+  332: "Bésame - Camila",
+  333: "Endless Love - Diana Ross y Lionel Richie",
+  334: "Fotografía - Juanes y Nelly Furtado",
+  335: "Abrázame - Julio Iglesias",
+  336: "She Will Be Loved - Maroon 5",
+  337: "Si No Te Hubieras Ido - Maná",
+  338: "Todo de Ti - Rauw Alejandro",
+  339: "Quién Como Tú - Ana Gabriel",
+  340: "Tengo Todo Excepto a Ti - Luis Miguel",
+  341: "Sueña - Intocable",
+  342: "Eres Mía - Romeo Santos",
+  343: "Me Enamora - Juanes",
+  344: "Pasos de Cero - Pablo Alborán",
+  345: "Enchanted - Taylor Swift",
+  346: "Hermosa Experiencia - Banda MS",
+  347: "Azul - Zoé",
+  348: "Será - Ricardo Montaner",
+  349: "Un Siglo Sin Ti - Chayanne",
+  350: "Vía Láctea - Zoé",
+  351: "Hasta la Raíz - Natalia Lafourcade",
+  352: "Cómo Te Extraño Mi Amor - Leo Dan",
+  353: "Llévame Contigo - Romeo Santos",
+  354: "And I Love Her - The Beatles",
+  355: "Soldadito Marinero - Fito y Fitipaldis",
+  356: "Cama y Mesa - Roberto Carlos",
+  357: "Mariposa Tecknicolor - Fito Páez",
+  358: "Lo Aprendí de Ti - Ha*Ash",
+  359: "Three Times a Lady - The Commodores",
+  360: "Besos en Guerra - Morat y Juanes",
+  361: "Frío Frío - Juan Luis Guerra",
+  362: "Te Amo - Franco De Vita",
+  363: "Volverte a Ver - Juanes",
+  364: "Su Veneno - Aventura",
+  365: "Te Quiero - Hombres G",
+};
 // 365 mensajes, uno por día. Edítalos o cámbialos a tu gusto.
 const MESSAGES = ["Hoy empieza tu cápsula, Valentina. Un mensaje cada día, todos para ti.", "Tus ojos son lo primero que pienso al despertar.", "Hoy quiero un abrazo tuyo, de esos largos.", "Me encanta cómo sonríes cuando crees que nadie te mira.", "Quiero estar contigo, hoy y todos los días.", "Tus besos arreglan cualquier día.", "Eres lo más bonito que me ha pasado.", "Me pierdo en tus ojos cada vez que me miras.", "Hoy te pienso con mucho cariño.", "Quiero llenarte de besos, empezando por la frente.", "Tu boca es mi lugar favorito del mundo.", "Contigo hasta lo simple se vuelve especial.", "Hoy te abrazaría fuerte y no te soltaría.", "Qué bonita eres, por fuera y por dentro.", "Tus ojos tienen algo que me deja sin palabras.", "Me gusta tu risa más que mi canción favorita.", "Quiero despertar a tu lado algún día.", "Un beso lento, de esos que paran el tiempo. Eso quiero hoy.", "Aprecio todo lo que eres, Valentina.", "Me gustas toda, sin excepción.", "Tu abrazo es mi lugar seguro.", "Hoy extraño tus besos más de lo normal.", "Me encanta cómo me miras.", "Contigo todo se siente en casa.", "Quiero verte, y luego verte otra vez.", "Tu sonrisa me cambia el día entero.", "Hoy quiero besarte despacito.", "Qué suerte tengo de que existas.", "Tus ojos son el color de mis ganas de verte.", "Eres mi pensamiento favorito.", "Un abrazo tuyo y se acaba el cansancio.", "Me gusta todo de ti, hasta lo que tú no ves.", "Quiero tomarte de la mano y caminar sin rumbo.", "Tu boca, tu risa, tu voz: todo me encanta.", "Hoy te mando un beso. Atrápalo.", "Estar contigo es mi plan favorito.", "Me enamora cómo te emocionas con lo que amas.", "Quiero abrazarte hasta que se nos olvide la hora.", "Cada vez que te veo, me gustas más.", "Tus ojos me hablan aunque no digas nada.", "Gracias por existir tal cual eres.", "Hoy te daría un beso en la mejilla solo para hacerte reír.", "Contigo quiero muchos días más.", "Tienes una belleza que no se acaba.", "Me haces sentir muy afortunado cada día.", "Quiero pasar una tarde entera abrazados.", "Me encantas, así de sencillo.", "Tus labios me tienen pensando de más.", "Eres mi calma y mi emoción al mismo tiempo.", "Te quiero mucho, Valentina. Hoy y siempre.", "Hoy quisiera estar a tu lado, aunque sea en silencio.", "Me gusta cómo se te achinan los ojos cuando te ríes.", "Un beso tuyo vale más que cualquier regalo.", "Contigo no hay día aburrido.", "Eres preciosa, y no te lo digo suficiente.", "Quiero que me abraces fuerte por la espalda.", "Cuando me miras, se me olvida todo lo demás.", "Hoy pienso en tu sonrisa y me alegro solito.", "Me encanta estar cerca de ti.", "Quiero besarte hasta que se nos acabe el aire.", "Tu voz es mi sonido favorito.", "Eres la razón de muchas de mis sonrisas.", "Hoy te abrazo con el pensamiento.", "Me gusta cuando me miras y sonríes.", "Quiero verte feliz, siempre.", "Qué bonito es quererte.", "Tus besos saben a hogar.", "Me fascinan tus ojos, de verdad.", "Quiero escucharte hablar de lo que sea, por horas.", "Contigo aprendí que querer es sencillo.", "Hoy toca un abrazo de esos que reparan todo.", "Eres demasiado linda para ser real.", "Me haces falta cuando no estás.", "Quiero ser tu compañía en los días buenos y malos.", "Tu mirada me calma.", "Si pudiera, hoy te daría mil besos.", "Me gusta lo que me haces sentir.", "Tu boca sonriendo es mi imagen favorita.", "Quiero estar contigo sin prisas.", "Hoy brindo por ti y por tus ojos.", "Cada día contigo es un buen día.", "Me derrito con tu manera de abrazar.", "Eres mi persona favorita.", "Quiero cuidarte y que me cuides.", "Tus ojos parecen guardar secretos bonitos.", "Hoy me conformo con verte un ratito.", "Un beso en la frente, otro en la mejilla, otro en la boca.", "Qué bonito es despertar pensando en ti.", "Me encanta tu forma de ser.", "Quiero que sepas cuánto me importas.", "Tu abrazo me quita el estrés.", "Contigo quiero muchas primeras veces.", "Me gusta mirarte aunque finjas no darte cuenta.", "Eres de lo mejor que tengo.", "Hoy quiero compartir contigo hasta lo más pequeño.", "Tus labios y los míos se extrañan.", "Me haces querer ser mejor.", "Qué linda te ves cuando te ríes.", "Quiero pasar el día entero contigo.", "Cien mensajes y cien razones para quererte.", "Aún quedan muchos besos por darte.", "Tus ojos son mi paisaje favorito.", "Un abrazo largo antes de dormir: eso quiero.", "Eres tan hermosa que a veces me quedo callado.", "Me encanta que seas tan tú.", "Hoy te quiero un poquito más que ayer.", "Quiero tu mano en la mía.", "Tu risa es mi canción preferida.", "Contigo el tiempo vuela.", "Me gusta imaginarnos viendo una película abrazados.", "Tu boca me tiene hechizado.", "Eres un regalo que agradezco todos los días.", "Quiero besarte bajo la lluvia, aunque nos mojemos.", "Me hace feliz saber que existes.", "Hoy te abrazo fuerte desde aquí.", "Qué bonitos ojos tienes, Valentina.", "Cuando sonríes, todo se ilumina.", "Quiero estar donde estés tú.", "Contigo me siento yo mismo.", "Un beso tuyo y me arreglas la semana.", "Eres mi paz.", "Quiero abrazarte hasta que digas basta. Y no lo digas.", "Todo en ti me gusta, de pies a cabeza.", "Hoy te escribo con una sonrisa boba.", "Tu forma de mirarme me desarma.", "Quiero que me cuentes todo, hasta lo tonto.", "Me encanta lo bien que se siente tu abrazo.", "Eres mi lugar favorito.", "Hoy besaría tus manos y luego tu boca.", "Qué bendición cruzarme contigo.", "Eres hermosa cuando no te maquillas, y cuando sí también.", "Quiero que me abraces y que el mundo espere.", "Te pienso en mis ratos libres, y en los que no lo son.", "Tu mirada es mi debilidad.", "Contigo, hasta esperar es bonito.", "Quiero darte un beso de buenos días.", "Gracias por tu cariño, lo cuido mucho.", "Me haces reír como nadie.", "Hoy tu sonrisa me alcanzó a la distancia.", "Quiero estar a tu lado en todo.", "Tu boca dice cosas que me hacen feliz.", "Eres tierna, fuerte y preciosa.", "Me gusta cuando me abrazas sin avisar.", "Cada día te admiro más.", "Tus ojos son mi hora favorita del día.", "Quiero un domingo entero contigo.", "Hoy quiero decirte lo mucho que te aprecio.", "Me encanta lo que somos.", "Un abrazo tuyo es mejor que cualquier plan.", "Ya van 150 días queriéndote en mensajes.", "Tus besos son mi adicción favorita.", "Quiero mirarte a los ojos un buen rato.", "Gracias por cada momento a tu lado.", "Eres la persona que más quiero abrazar.", "Hoy me gustaría escuchar tu risa en persona.", "Qué ganas de verte.", "Me gusta tu boca, tu risa y tu manera de decir mi nombre.", "Contigo la vida es más bonita.", "Quiero cuidar tu sonrisa siempre.", "Eres la mejor parte de mis días.", "Hoy te daría un abrazo que te levante del suelo.", "Tu mirada tiene algo que me enamora.", "Quiero que seas muy feliz, y ojalá sea conmigo.", "Eres lo más lindo que se me cruzó.", "Me quedo con tus besos y tus abrazos.", "Hoy pienso en tus ojos y sonrío solo.", "Quiero que sepas que contigo me siento en paz.", "Nadie me hace reír como tú.", "Un beso tuyo y me olvido de todo.", "Mereces todo el cariño del mundo.", "Me gusta cómo me haces sentir importante.", "Quiero compartir mis días contigo.", "Eres mi mejor casualidad.", "Hoy quiero abrazarte por mucho rato.", "Tu boca es el mejor lugar para un beso.", "Me encanta que me mires así.", "Contigo quiero cosas bonitas y largas.", "Cuídate mucho, que eres muy valiosa para mí.", "Hoy te dedico mi mejor sonrisa.", "Eres el motivo de mis ganas de verte.", "Me gusta que me hagas sentir tan querido.", "Vamos por la mitad del camino y te quiero más que al inicio.", "Tus ojos me recuerdan lo bonito que es mirar.", "Quiero abrazarte, y luego abrazarte más.", "Qué dicha que seas parte de mi vida.", "Hoy te mando un beso largo.", "Me encanta pasar tiempo contigo.", "Eres la ilusión de mis días.", "Tus labios sonriendo: mi vista favorita.", "Quiero que me abraces fuerte y me digas que todo está bien.", "Contigo quiero llegar lejos.", "Eres hermosa, y lo sabes... o deberías.", "Hoy agradezco que me quieras.", "Quiero ver el atardecer a tu lado.", "Tus besos me hacen sentir en casa.", "Me gusta cómo brillan tus ojos cuando hablas de algo que amas.", "Siempre quiero estar cerca de ti.", "Hoy te abrazo con todo mi cariño.", "Cada día contigo, un motivo más.", "Doscientos días. Mis ojos favoritos siguen siendo los tuyos.", "Quiero besarte despacio y sin prisa.", "Eres una de las mejores cosas de mi vida.", "Tu abrazo me cura el día.", "Me encanta cómo dices las cosas.", "Hoy me gustaría tenerte cerquita.", "Me gustas más cada vez que te conozco.", "Tus ojos son el mejor lugar para perderme.", "Quiero cuidarte siempre.", "Contigo me siento afortunado.", "Un beso en tu mejilla, a ver si te sonrojas.", "Hoy pienso en todo lo que me gusta de ti, y es mucho.", "Quiero ser tu persona de confianza.", "Tu boca hace que el mundo sea más bonito.", "Qué bonito es abrazarte.", "Me gusta verte contenta.", "Contigo todo se disfruta más.", "Hoy te quiero decir: gracias por ser tú.", "Tu mirada me tranquiliza.", "Quiero abrazarte fuerte aunque haga calor.", "Eres mi sonrisa favorita.", "Te aprecio mucho, más de lo que digo.", "Hoy quiero tus besos y tu risa.", "Me gusta que estés en mis pensamientos.", "Quiero estar contigo en las buenas, las malas y las regulares.", "Tus ojos tienen el color de las cosas lindas.", "Hoy mereces un abrazo y un beso.", "Me encanta cuando te ríes de mis chistes malos.", "Eres de las que dejan huella.", "Quiero un beso tuyo de bienvenida.", "Tu cariño es mi mejor regalo.", "Me gusta verte, aunque sea de lejos.", "Quiero abrazarte hasta que se nos olvide el cansancio.", "Eres bella en cada detalle.", "Hoy te quiero con calma y con ganas.", "Tus besos, mi mejor recuerdo.", "Contigo todo tiene sentido.", "Me alegra tanto haberte conocido.", "Quiero que sientas lo importante que eres para mí.", "Tus ojos son mi punto de calma.", "Hoy te abrazaría y te diría \"aquí estoy\".", "Qué linda eres, de verdad.", "Me encanta pensar en nosotros.", "Hoy te mando todo mi cariño.", "Quiero conocer cada rinconcito de ti.", "Tu boca me tiene loco, pero de cariño.", "Eres mi favorita en todo.", "Quiero abrazarte y quedarnos así.", "Gracias por tanta ternura.", "Hoy te recuerdo con una sonrisa.", "Doscientos cincuenta días y sigo con ganas de abrazarte.", "Quiero que me mires así toda la vida.", "Tus besos me hacen feliz.", "Eres un sueño bonito, de los que sí se cumplen.", "Hoy te quiero abrazar sin motivo.", "Me gusta todo lo que tiene que ver contigo.", "Quiero verte sonreír hoy.", "Tus ojos, mi lugar de descanso.", "Contigo no necesito más.", "Hoy me alegra estar enamorado de ti.", "Eres hermosa de maneras que no puedo explicar.", "Quiero besarte hasta que se nos olvide el mundo.", "Tu abrazo es mi parte favorita del día.", "Me encanta cuando me dices que me quieres.", "Quiero que me elijas todos los días.", "Hoy te pienso con ternura.", "Tu sonrisa es la mejor medicina.", "Quiero abrazarte bien fuerte.", "Me gusta que seas mi persona.", "Tus ojos me siguen aunque no estés.", "Hoy quiero comerte a besos.", "Eres mi razón favorita para sonreír.", "Quiero tenerte cerca siempre.", "Gracias por ser tan tú, tan linda y tan especial.", "Me gusta que me hagas sentir querido.", "Hoy me gustaría escribir tu nombre en el cielo.", "Contigo, la vida se siente suave.", "Tu boca y tu risa: mis cosas favoritas.", "Quiero un abrazo largo de reencuentro.", "Cada beso tuyo es un motivo de alegría.", "Eres la mejor compañía.", "Quiero cuidar lo nuestro.", "Me encanta lo que veo en tus ojos.", "Hoy quiero decirte que te adoro.", "Contigo quiero muchos años.", "Eres tan linda que a veces dudo que sea real.", "Un abrazo y un beso: así quiero empezar el día contigo.", "Tu mirada hace que me sienta querido.", "Eres un rayito de sol en mi día.", "Quiero que sepas que aquí estoy para ti.", "Me gusta tanto la forma en que me besas.", "Hoy te agradezco tu paciencia conmigo.", "Quiero tomar tu mano y no soltarla.", "Eres mi mejor idea.", "Tu abrazo huele a todo lo que quiero.", "Hoy pienso en ti desde que desperté.", "Me gusta pensar en un futuro contigo.", "Quiero que me abraces fuerte hoy.", "Eres lo mejor de mi semana, mi mes y mi año.", "Tus ojos son un universo bonito.", "Trescientos días. Y mi lugar favorito sigue siendo a tu lado.", "Quiero besarte hoy como el primer día.", "Cada día te quiero más.", "Tu sonrisa es mi pedacito de felicidad.", "Hoy quiero abrazarte y decirte gracias.", "Me encanta cómo me haces reír.", "Mereces un día lleno de besos.", "Quiero conocerte más cada día.", "Tus ojos me dicen que todo va a estar bien.", "Eres mi compañera favorita.", "Hoy te mando un abrazo largo, largo.", "Quiero cuidarte cuando estés cansada.", "Gracias por quererme como me quieres.", "Tu boca, mi antojo favorito.", "Hoy me acuerdo de tu risa y sonrío.", "Quiero que cada día contigo sea mejor.", "Me gusta la forma en que me miras.", "Eres la dueña de mis mejores pensamientos.", "Quiero estar cerquita de ti hoy.", "Un beso tuyo, y se ordena el mundo.", "Eres preciosa de todas las formas.", "Hoy te quiero mucho, como siempre.", "Me gustas cuando hablas, cuando callas y cuando te ríes.", "Quiero abrazarte y platicar de todo.", "Eres mi ilusión más bonita.", "Hoy quiero decirte que te admiro.", "Tus ojos son un regalo para quien los mira.", "Quiero un beso de buenas noches contigo.", "Contigo, todo lo difícil se vuelve ligero.", "Gracias por tus abrazos, tus besos y tu cariño.", "Quiero estar contigo mucho, mucho tiempo.", "Hoy te sueño despierto.", "Me encanta tu forma de querer.", "Eres lo que siempre quise encontrar.", "Tu sonrisa es mi mejor motivo.", "Hoy quiero decirte algo: me haces muy feliz.", "Quiero tu abrazo hoy y mañana también.", "Me gustan tus ojos, tu boca y tu corazón.", "Eres mi mejor suerte.", "Quiero que me recuerdes con cariño siempre.", "Hoy te beso en pensamiento.", "Estar contigo es mi lugar feliz.", "Eres mi favorita del mundo entero.", "Me gusta cada cosita de ti.", "Quiero abrazarte fuerte antes de que termine el día.", "Cada beso tuyo me recuerda lo afortunado que soy.", "Eres, simplemente, lo mejor.", "Tus ojos me acompañan aunque no los vea.", "Hoy quiero que sonrías mucho.", "Quiero seguir sumando días contigo.", "Cada día, tú. Siempre tú.", "Gracias por abrir esta cápsula, Valentina.", "Hoy te quiero decir que eres especial.", "Quiero besarte y abrazarte sin parar.", "Tu mirada es mi hogar.", "Gracias por cada momento bonito.", "Eres la persona con quien quiero estar.", "Faltan pocos días, pero lo que siento no se acaba.", "Tu sonrisa me da paz.", "Quiero abrazarte fuerte en cuanto pueda.", "Contigo todo es mejor.", "Faltan cuatro mensajes, y mil abrazos por darte.", "Tus ojos, tu boca, tu risa: todo me encanta.", "Gracias por todo este tiempo contigo.", "Mañana es el último mensaje. Hoy, solo te quiero.", "Último mensaje: te quiero, Valentina. Esto fue solo el comienzo. 💛"];
 // Prueba: agrega ?fecha=2026-10-20 a la URL para simular otro día.
@@ -151,8 +526,9 @@ function fmtCount(ms) {
 function showMessage(i) {
   clearInterval(timer);
   opened[i] = true; save();
-  $("out").innerHTML = '<div class="msg"><small>Día ' + (i + 1) + '</small><p></p><div class="ph" id="ph"></div></div>';
+  $("out").innerHTML = '<div class="msg"><small>Día ' + (i + 1) + '</small><p></p><div id="song"></div><div class="ph" id="ph"></div></div>';
   $("out").querySelector("p").textContent = MESSAGES[i];
+  drawSong(i);
   drawPhoto(i);
   render();
 }
@@ -334,7 +710,7 @@ function openAlbum() {
     const sm = document.createElement("small");
     sm.textContent = "Día " + (i + 1) + " · " + unlockAt(i).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
     const p = document.createElement("p"); p.textContent = MESSAGES[i];
-    body.appendChild(sm); body.appendChild(p); card.appendChild(body); list.appendChild(card);
+    body.appendChild(sm); body.appendChild(p); { const sg = songLink(i); if (sg) body.appendChild(sg); } card.appendChild(body); list.appendChild(card);
   }
   if (!n) { const e = document.createElement("p"); e.className = "aempty"; e.textContent = "Aún no hay recuerdos. Abre el mensaje de hoy y agrega una foto."; list.appendChild(e); }
   $("album").hidden = false; $("album").scrollTop = 0;
@@ -343,6 +719,66 @@ $("album-btn").onclick = openAlbum;
 $("aclose").onclick = () => { $("album").hidden = true; };
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 loadFotos();
+
+// ====== ÁBRELA CUANDO… y CANCIÓN DEL DÍA ======
+// Edita, agrega o quita cartas aquí: { t: "título", x: "texto" }
+const CARTAS = [
+ {
+  "t": "Cuando me extrañes",
+  "x": "Si estás leyendo esto, seguro me extrañas, y quiero que sepas que yo también a ti. Cierra los ojos un momento y piensa en mi abrazo: ahí estoy. Aunque no nos veamos, no dejo de pensar en ti ni un solo día, y pronto vuelvo a estar cerquita."
+ },
+ {
+  "t": "Cuando tengas un mal día",
+  "x": "Ven, respira. Los días malos también pasan y tú eres más fuerte de lo que crees. No tienes que poder con todo hoy. Aquí estoy para escucharte, para abrazarte o para quedarme contigo en silencio. Mereces descansar y recibir mucho cariño."
+ },
+ {
+  "t": "Cuando no puedas dormir",
+  "x": "Son horas raras y tu mente no para, ¿verdad? Deja el celular un ratito, respira hondo tres veces y piensa en algo bonito: tu risa, un abrazo, un lugar que te guste. Todo lo que te preocupa se ve más chiquito de día. Descansa, que mañana yo sigo aquí."
+ },
+ {
+  "t": "Cuando dudes de ti",
+  "x": "Mírate como yo te veo: valiente, linda y con un corazón enorme. Si dudas, recuerda todo lo que ya has logrado. Yo creo en ti, incluso en los días en que tú no puedes. Y quiero que lo sepas: eres suficiente, tal cual eres."
+ },
+ {
+  "t": "Cuando quieras sonreír",
+  "x": "Piensa en lo último que te dio risa de verdad. Ahora piensa en mis chistes malos y en cómo me miras cuando los cuento. Si no te sacan una sonrisa, al menos yo ya me acordé de la tuya, que es mi parte favorita del día."
+ },
+ {
+  "t": "Cuando estés feliz",
+  "x": "¡Qué bonito que estés feliz! Disfruta este momento al máximo y guárdalo. Verte sonreír es de lo mejor que me pasa, y ojalá yo esté ahí para celebrarlo contigo con un abrazo bien grande."
+ },
+ {
+  "t": "Cuando necesites un abrazo",
+  "x": "Cierra los ojos y siente este abrazo largo, de esos que no sueltan. Imagina mis brazos alrededor tuyo, apretando fuerte. Ahí estoy. Y cuando nos veamos, te lo debo en persona, y con intereses."
+ }
+];
+function songLink(i) {
+  const s = CANCION_DIA[i + 1]; if (!s) return null;
+  const q = typeof s === "string" ? { t: s } : s;
+  const a = document.createElement("a");
+  a.className = "song"; a.target = "_blank"; a.rel = "noopener";
+  a.href = q.url || ("https://www.youtube.com/results?search_query=" + encodeURIComponent(q.t));
+  a.textContent = "🎵 Canción de hoy: " + q.t;
+  return a;
+}
+function drawSong(i) {
+  const b = $("song"); if (!b) return;
+  b.innerHTML = ""; const a = songLink(i); if (a) b.appendChild(a);
+}
+function openCartas() {
+  const l = $("clist"); l.innerHTML = "";
+  CARTAS.forEach(c => {
+    const card = document.createElement("div"); card.className = "acard";
+    const b = document.createElement("button"); b.className = "cbtn"; b.textContent = c.t;
+    const body = document.createElement("div"); body.hidden = true;
+    const p = document.createElement("p"); p.textContent = c.x; body.appendChild(p);
+    b.onclick = () => { body.hidden = !body.hidden; };
+    card.appendChild(b); card.appendChild(body); l.appendChild(card);
+  });
+  $("cartas").hidden = false; $("cartas").scrollTop = 0;
+}
+$("cartas-btn").onclick = openCartas;
+$("cclose").onclick = () => { $("cartas").hidden = true; };
 </script>
 </body>
 </html>
